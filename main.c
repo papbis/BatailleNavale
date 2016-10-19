@@ -31,6 +31,8 @@
 #define B4_NB 1
 
 int static map[MAP_W][MAP_H][NB_PLAYER][DATA];
+int static player1_GM, player2_GM;
+
 
 void br(){printf("\n");}// fonction de retour a la ligne
 void indev(){
@@ -146,7 +148,7 @@ void initPos(int *x,int *y,char nom[10],int taille,int player){
         }
     }
 }
-void menuPrincipal(int *p1,int *p2){
+void menuPrincipal(){
     //Variables
     int menu = 0;
     //Execution
@@ -167,18 +169,18 @@ void menuPrincipal(int *p1,int *p2){
         switch(menu){
             case 1://PVP mode
                 printf("PVP");
-                *p1=PLAY;
-                *p2=PLAY;
+                player1_GM=PLAY;
+                player2_GM=PLAY;
             break;
             case 2://PVE mode
                 printf("PVE");
-                *p1=PLAY;
-                *p2=IA;
+                player1_GM=PLAY;
+                player2_GM=IA;
             break;
             case 3://EVE mode
                 printf("EVE");
-                *p1=IA;
-                *p2=IA;
+                player1_GM=IA;
+                player2_GM=IA;
             break;
         }
     }
@@ -186,6 +188,8 @@ void menuPrincipal(int *p1,int *p2){
 void initMap(int player){
     int i,j,k,l,X,Y,O;
     int valide = 0;
+
+    //Initialise le tableau a 0
     for(i=0;i<MAP_H;i++){ // init map {0}
         for(j=0;j<MAP_W;j++){
             for(k=0;k<NB_PLAYER;k++){
@@ -196,22 +200,23 @@ void initMap(int player){
         }
     }
 
-    for(i=0;i<B4_NB;i++){
+    for(i=0;i<B4_NB;i++){ // place les bateaux de type 4
         printTableau(player);
         initPos(&X,&Y,B4_NOM,B4_TAILLE,player);
     }
-    for(i=0;i<B3_NB;i++){
+    for(i=0;i<B3_NB;i++){ // place les bateaux de type 3
         printTableau(player);
         initPos(&X,&Y,B3_NOM,B3_TAILLE,player);
     }
-    for(i=0;i<B2_NB;i++){
+    for(i=0;i<B2_NB;i++){ // place les bateaux de type 2
         printTableau(player);
         initPos(&X,&Y,B2_NOM,B2_TAILLE,player);
     }
-    for(i=0;i<B1_NB;i++){
+    for(i=0;i<B1_NB;i++){ // place les bateaux de type 1
         printTableau(player);
         initPos(&X,&Y,B1_NOM,B1_TAILLE,player);
     }
+    system("cls");
 }
 void printTableau(int player){
     int x,y;
@@ -252,12 +257,10 @@ void printTableau(int player){
 }
 int main()
 {
-    // Variables
-    int Player1_GM,Player2_GM;
     // Execution
     printf("Bataille navale Dv:2\n\n");
-    //menuPrincipal(&Player1_GM,&Player2_GM);
-    initMap(PLAYER1_ID);
-    printTableau(PLAYER1_ID);
+    menuPrincipal();
+    //initMap(PLAYER1_ID);
+    //printTableau(PLAYER1_ID);
     return 0;
 }
