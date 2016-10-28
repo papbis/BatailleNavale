@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <windows.h>
+#include <time.h>
 
 #define MAP_H 10
 #define MAP_W 10
@@ -29,17 +30,35 @@
 #define B4_TAILLE 6
 #define B4_NB 1
 
+// Settings
+
+#define printIAtable 0
+
 int static map[MAP_W][MAP_H][NB_PLAYER][DATA];
 int static GameMode; // 0=PVP, 1=PVE, 2=EVE
 
 
-void br(){printf("\n");}// fonction de retour a la ligne
+void br(int n){
+    int i;
+    for(i=0;i<n;i++){
+        printf("\n");
+    }
+}// fonction de retour a la ligne
+
 void indev(){
 
     printf("Fonctionalite en cours developpement ...");
     getchar();
     exit(0);
 } // Fin indev
+
+int autreJoueur(int joueur){
+    if(joueur==PLAYER1_ID){
+        return PLAYER2_ID;
+    }else{
+        return PLAYER1_ID;
+    }
+}
 
 void color(int t,int f){
     HANDLE H=GetStdHandle(STD_OUTPUT_HANDLE);
@@ -51,11 +70,11 @@ void waitFor (unsigned int secs) {
     while (time(0) < retTime);               // Loop until it arrives.
 } // Fin waitFor
 
-int doRand(int startVal, int endVal){
+int doRand(int startVal, int endVal){// fonction doRand corigée
     waitFor(0.05);
     srand(time(NULL)*rand());
-    if(startVal == 0 && endVal == 1){
-        return rand() % 2;
+    if(startVal == 0){
+        return (rand() % (endVal +1));
     }else{
         return (rand() % ((endVal + startVal -1)) + startVal);
     }
@@ -65,39 +84,58 @@ char nbToLettre(int nb){
     return nb=(nb%26+65);;
 } // Fin nbToLettre
 
-void printTableau(int player){
+void printTableau(int player,int tableau){
     int x,y;
     for(y=-1;y<MAP_H;y++){
         color(7,0);
-        if(y<9){
+        if(y<9){ // ajout d'espace por alligner
             printf(" ");
         }
 
-        if(y>=0){
+        if(y>=0){ // affiche les coordonés Y
             printf("%d ",y+1);
-        }else{
+        }else{// affiche X en haut a gauche
             printf("X ");
         }
 
         for(x=0;x<MAP_W;x++){
             color(7,0);
-            if(y>=0){
-                if(map[x][y][player][0]==0){
+            if(y>=0){//si dans la grille (!= legende)
+                if(map[x][y][tableau][0]==0){
                     color(1,1);
+                    printf("%d ",map[x][y][tableau][0]);
+                }else if(map[x][y][tableau][0]==1){
+                    if(player==tableau){
+                        color(0,7);
+                        printf("%d ",map[x][y][tableau][INFO]);
+                    }else{
+                        color(1,1);
+                        printf("%d ",0);
+                    }
+                }else if(map[x][y][tableau][0]==-2){
+                    color(7,1);
+                    printf("%d ",map[x][y][tableau][0]);
+                }else if(map[x][y][tableau][0]==-1){
+                    color(7,4);
+                    printf("%d ",map[x][y][tableau][0]);
                 }else{
                     color(0,7);
+                    printf("%d ",map[x][y][tableau][0]);
                 }
-                printf("%d ",map[x][y][player][0]);
-            }else{
-                printf("%c ",nbToLettre(x));
+                if(map[x][y][tableau][0]>=0){ // ajout d'espace por alligner
+                    printf(" ");
+                }
+                color(7,0);
+            }else{// si légende
+                printf(" %c ",nbToLettre(x));
             }
         }
 
         if(y>=0){
-            br();
+            br(1);
         }else{
-            br();
-            br();
+            br(1);
+            br(1);
         }
     }
     color(7,0);
@@ -133,8 +171,8 @@ void getUserPos(int *x,int *y){
     }
 } // Fin getUserPos
 
-void initPos(int *x,int *y,char nom[10],int taille,int player){
-    int O,i,j;
+void initPos(int *x,int *y,char nom[10],int taille,int player,int id){
+    int O,i;
     int valide =0;
     while(valide!=1){
 
@@ -147,7 +185,7 @@ void initPos(int *x,int *y,char nom[10],int taille,int player){
     }
 
     // debug
-    printf("\n x:%d y:%d \n",*x,*y);
+    // printf("\n x:%d y:%d \n",*x,*y);
     // fin debug
 
     valide = 0;
@@ -163,15 +201,16 @@ void initPos(int *x,int *y,char nom[10],int taille,int player){
             case 1://Haut
                 if(*y+1>=taille){//Verification
                         valide = 1;
-                    for(j=*y+1-taille;j<=*y;j++){
-                        if(valide==1 && map[*x][j][player][TYPE]!=0){
+                    for(i=*y+1-taille;i<=*y;i++){
+                        if(valide==1 && map[*x][i][player][TYPE]!=0){
                             valide = 0;
                         }
                     }
                 }// Fin verication
                 if(valide == 1){// si valide : positionner le bateau
-                    for(j=*y+1-taille;j<=*y;j++){
-                        map[*x][j][player][TYPE]=1;
+                    for(i=*y+1-taille;i<=*y;i++){
+                        map[*x][i][player][TYPE]=1;
+                        map[*x][i][player][INFO]=id;
                     }
                 }//fin positionnement
             break;
@@ -179,45 +218,48 @@ void initPos(int *x,int *y,char nom[10],int taille,int player){
             case 2://Bas
                 if(*y<=MAP_H-taille){
                     valide = 1;
-                    for(j=*y-1+taille;j>=*y;j--){
-                        if(valide==1 && map[*x][j][player][TYPE]!=0){
+                    for(i=*y-1+taille;i>=*y;i--){
+                        if(valide==1 && map[*x][i][player][TYPE]!=0){
                             valide = 0;
                         }
                     }
                 }
                 if(valide == 1){
-                    for(j=*y-1+taille;j>=*y;j--){
-                        map[*x][j][player][TYPE]=1;
+                    for(i=*y-1+taille;i>=*y;i--){
+                        map[*x][i][player][TYPE]=1;
+                        map[*x][i][player][INFO]=id;
                     }
                 }
             break;
             case 3://Gauche
                 if(*x+1>=taille){
                         valide = 1;
-                    for(j=*x+1-taille;j<=*x;j++){
-                        if(valide==1 && map[j][*y][player][TYPE]!=0){
+                    for(i=*x+1-taille;i<=*x;i++){
+                        if(valide==1 && map[i][*y][player][TYPE]!=0){
                             valide = 0;
                         }
                     }
                 }
                 if(valide == 1){
-                    for(j=*x+1-taille;j<=*x;j++){
-                        map[j][*y][player][TYPE]=1;
+                    for(i=*x+1-taille;i<=*x;i++){
+                        map[i][*y][player][TYPE]=1;
+                        map[i][*y][player][INFO]=id;
                     }
                 }
             break;
             case 4://Droite
                 if(*x<=MAP_H-taille){
                     valide = 1;
-                    for(j=*x-1+taille;j>=*x;j--){
-                        if(valide==1 && map[j][*y][player][TYPE]!=0){
+                    for(i=*x-1+taille;i>=*x;i--){
+                        if(valide==1 && map[i][*y][player][TYPE]!=0){
                             valide = 0;
                         }
                     }
                 }
                 if(valide == 1){
-                    for(j=*x-1+taille;j>=*x;j--){
-                        map[j][*y][player][TYPE]=1;
+                    for(i=*x-1+taille;i>=*x;i--){
+                        map[i][*y][player][TYPE]=1;
+                        map[i][*y][player][INFO]=id;
                     }
                 }
             break;
@@ -228,7 +270,6 @@ void initPos(int *x,int *y,char nom[10],int taille,int player){
 
 void initMap(int player){
     int i,j,k,l,X,Y,O;
-    int valide = 0;
 
     printf("Tour du joueur %d\n",player+1);
     getchar();
@@ -237,31 +278,29 @@ void initMap(int player){
     for(i=0;i<MAP_H;i++){ // init map {0}
         for(j=0;j<MAP_W;j++){
             for(k=0;k<NB_PLAYER;k++){
-                for(l=0;l<DATA;l++){
-                    map[j][i][k][l]=0;
-                }
+                    map[j][i][player][k]=0;
             }
         }
     }
 
     for(i=0;i<B4_NB;i++){ // place les bateaux de type 4
-        printTableau(player);
-        initPos(&X,&Y,B4_NOM,B4_TAILLE,player);
+        printTableau(player,player);
+        initPos(&X,&Y,B4_NOM,B4_TAILLE,player,4);
     }
     for(i=0;i<B3_NB;i++){ // place les bateaux de type 3
-        printTableau(player);
-        initPos(&X,&Y,B3_NOM,B3_TAILLE,player);
+        printTableau(player,player);
+        initPos(&X,&Y,B3_NOM,B3_TAILLE,player,3);
     }
     for(i=0;i<B2_NB;i++){ // place les bateaux de type 2
-        printTableau(player);
-        initPos(&X,&Y,B2_NOM,B2_TAILLE,player);
+        printTableau(player,player);
+        initPos(&X,&Y,B2_NOM,B2_TAILLE,player,2);
     }
     for(i=0;i<B1_NB;i++){ // place les bateaux de type 1
-        printTableau(player);
-        initPos(&X,&Y,B1_NOM,B1_TAILLE,player);
+        printTableau(player,player);
+        initPos(&X,&Y,B1_NOM,B1_TAILLE,player,1);
     }
 
-    printTableau(player);
+    printTableau(player,player);
     getchar();
     system("cls");
 } // Fin initMap
@@ -288,13 +327,69 @@ void menuPrincipal(){
     }
 } // Fin menuPrincipal
 
+int testFin(int player){
+    int x,y,total;
+    total=0;
+    for(y=0;y<MAP_W;y++){
+        for(x=0;x<MAP_H;x++){
+            if(map[x][y][player][TYPE]==1){
+                total++;
+            }
+        }
+    }
+    if (total==0){
+        printf("Joueur %d a fini !\n",player+1);
+        return 1;
+    }else{
+        printf("Joueur %d n'a pas fini, il lui reste %d cases \n",player+1,total);
+        return 0;
+    }
+}
+
+void tir(int player){
+    int valide,x,y;
+    valide = 0;
+    while(valide == 0){
+        if(player+GameMode<=1){//si joueur != IA
+            printf("entrez la position cible");
+            getUserPos(&x,&y);
+        }else{
+            x=doRand(0,MAP_W-1);
+            y=doRand(0,MAP_H-1);
+        }
+        if(map[x][y][autreJoueur(player)][TYPE]>=0){
+            map[x][y][autreJoueur(player)][TYPE]-=2;
+            valide = 1;
+        }
+    }
+}
 
 int main()
 {
+    int tourJoueur=PLAYER1_ID;
     // Execution
     printf("Bataille navale Dv:2\n\n");
     menuPrincipal();
     initMap(PLAYER1_ID);
     initMap(PLAYER2_ID);
+    printf("tout les bateaux sont en place\n");
+    while(testFin(PLAYER1_ID)==0&&testFin(PLAYER2_ID)==0){
+        if(tourJoueur+GameMode<=1 || printIAtable == 1 || testFin(tourJoueur) == 1){//si joueur ou affichage tableau IA activé ou fini
+            br(10);
+            printf("Grille adversaire\n");
+            printTableau(tourJoueur,autreJoueur(tourJoueur));
+            printf("\nPosition des navires\n");
+            printTableau(tourJoueur,tourJoueur);
+        }
+        tir(tourJoueur);
+        printf(" joueur %d a tire\n",tourJoueur+1);
+        tourJoueur=autreJoueur(tourJoueur);
+    }
+    printf("Tableau du Joeur %d :\n",tourJoueur);
+        printTableau(tourJoueur,tourJoueur);
+        tourJoueur=autreJoueur(tourJoueur);
+        printf("Tableau du Joeur %d :\n",tourJoueur);
+        printTableau(tourJoueur,tourJoueur);
+        tourJoueur=autreJoueur(tourJoueur);
     return 0;
 }
