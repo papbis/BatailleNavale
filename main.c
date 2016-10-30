@@ -11,7 +11,7 @@
 #define INFO 1
 #define PLAYER1_ID 0
 #define PLAYER2_ID 1
-//#define IA 1 //Mettre a 2 pour une IA plus difficile
+#define IA 2 //Mettre a 2 pour une IA plus difficile
 
 #define B1_NOM "corvette"
 #define B1_ID 1
@@ -32,7 +32,7 @@
 
 #define SAVE_PATH ".\\"
 #define AUTO_SAVE 1
-#define printIAtable 0
+#define printIAtable 1
 
 int static map[MAP_W][MAP_H][NB_PLAYER][DATA];
 int static GameMode; // 0=PVP, 1=PVE, 2=EVE
@@ -428,6 +428,42 @@ void tir(int player){
         if(player+GameMode<=1){//si joueur != IA
             printf("entrez la position cible");
             getUserPos(&x,&y);
+        }else if(IA==2){
+            int total,i,j;
+            total=0;
+            for(j=0;j<MAP_H;j++){
+                for(i=0;i<MAP_W;i++){
+                    if(map[i][j][autreJoueur(player)][TYPE]==-1){
+                        if(j>0 && map[i][j-1][autreJoueur(player)][TYPE]>=0){
+                            x=i;
+                            y=j-1;
+                            total++;
+                        }
+                        if(i>0 && map[i-1][j][autreJoueur(player)][TYPE]>=0){
+                            x=i-1;
+                            y=j;
+                            total++;
+                        }
+                        if(j<MAP_H-1 && map[i][j+1][autreJoueur(player)][TYPE]>=0){
+                            x=i;
+                            y=j+1;
+                            total++;
+                        }
+                        if(i<MAP_W-1 && map[i+1][j][autreJoueur(player)][TYPE]>=0){
+                            x=i+1;
+                            y=j;
+                            total++;
+                        }
+                    }
+                    if(total>=1){break;}
+                }
+                if(total>=1){break;}
+            }
+            if(total==0){
+                x=doRand(0,MAP_W-1);
+                y=doRand(0,MAP_H-1);
+            }
+
         }else{
             x=doRand(0,MAP_W-1);
             y=doRand(0,MAP_H-1);
@@ -472,7 +508,6 @@ int main()
             printTableau(tourJoueur,autreJoueur(tourJoueur));
             printf("\nPosition des navires\n");
             printTableau(tourJoueur,tourJoueur);
-            getchar();
         }
         tir(tourJoueur);
         printf(" joueur %d a tire\n",tourJoueur+1);
