@@ -3,8 +3,8 @@
 #include <windows.h>
 #include <time.h>
 
-#define MAP_H 10
-#define MAP_W 10
+#define MAP_H 18
+#define MAP_W 24 // maxi 26
 #define NB_PLAYER 2
 #define DATA 2
 #define TYPE 0
@@ -30,8 +30,8 @@
 #define B4_TAILLE 6
 #define B4_NB 1
 
-// Settings
-
+#define SAVE_PATH ".\\"
+#define AUTO_SAVE 1
 #define printIAtable 0
 
 int static map[MAP_W][MAP_H][NB_PLAYER][DATA];
@@ -45,14 +45,7 @@ void br(int n){
     }
 }// fonction de retour a la ligne
 
-void indev(){
-
-    printf("Fonctionalite en cours developpement ...");
-    getchar();
-    exit(0);
-} // Fin indev
-
-int autreJoueur(int joueur){
+int autreJoueur(int joueur){//fonction qui selectionne l'autre joueur
     if(joueur==PLAYER1_ID){
         return PLAYER2_ID;
     }else{
@@ -60,7 +53,7 @@ int autreJoueur(int joueur){
     }
 }
 
-void color(int t,int f){
+void color(int t,int f){// definie la couleur du texte et du bg dans la console
     HANDLE H=GetStdHandle(STD_OUTPUT_HANDLE);
     SetConsoleTextAttribute(H,f*16+t);
 } // Fin color
@@ -70,7 +63,7 @@ void waitFor (unsigned int secs) {
     while (time(0) < retTime);               // Loop until it arrives.
 } // Fin waitFor
 
-int doRand(int startVal, int endVal){// fonction doRand corigée
+int doRand(int startVal, int endVal){// fonction doRand modifiée
     waitFor(0.05);
     srand(time(NULL)*rand());
     if(startVal == 0){
@@ -81,14 +74,14 @@ int doRand(int startVal, int endVal){// fonction doRand corigée
 } // Fin doRand
 
 char nbToLettre(int nb){
-    return nb=(nb%26+65);;
+    return nb=(nb%26+65);
 } // Fin nbToLettre
 
 void printTableau(int player,int tableau){
     int x,y;
     for(y=-1;y<MAP_H;y++){
         color(7,0);
-        if(y<9){ // ajout d'espace por alligner
+        if(y<9){ // ajout d'espace pour alligner
             printf(" ");
         }
 
@@ -103,27 +96,28 @@ void printTableau(int player,int tableau){
             if(y>=0){//si dans la grille (!= legende)
                 if(map[x][y][tableau][0]==0){
                     color(1,1);
-                    printf("%d ",map[x][y][tableau][0]);
+                    printf(" %d ",map[x][y][tableau][0]);
                 }else if(map[x][y][tableau][0]==1){
                     if(player==tableau){
                         color(0,7);
-                        printf("%d ",map[x][y][tableau][INFO]);
+                        printf(" %d ",map[x][y][tableau][INFO]);
                     }else{
                         color(1,1);
-                        printf("%d ",0);
+                        printf(" %d ",0);
                     }
                 }else if(map[x][y][tableau][0]==-2){
                     color(7,1);
                     printf("%d ",map[x][y][tableau][0]);
                 }else if(map[x][y][tableau][0]==-1){
                     color(7,4);
-                    printf("%d ",map[x][y][tableau][0]);
+                    if(player==tableau){
+                        printf(" %d ",map[x][y][tableau][INFO]);
+                    }else{
+                        printf("%d ",map[x][y][tableau][0]);
+                    }
                 }else{
                     color(0,7);
                     printf("%d ",map[x][y][tableau][0]);
-                }
-                if(map[x][y][tableau][0]>=0){ // ajout d'espace por alligner
-                    printf(" ");
                 }
                 color(7,0);
             }else{// si légende
@@ -184,9 +178,6 @@ void initPos(int *x,int *y,char nom[10],int taille,int player,int id){
         *y=doRand(0,MAP_H-1);
     }
 
-    // debug
-    // printf("\n x:%d y:%d \n",*x,*y);
-    // fin debug
 
     valide = 0;
     if(player+GameMode<=1){//si joueur != IA
@@ -277,7 +268,7 @@ void initMap(int player){
     //Initialise le tableau a 0
     for(i=0;i<MAP_H;i++){ // init map {0}
         for(j=0;j<MAP_W;j++){
-            for(k=0;k<NB_PLAYER;k++){
+            for(k=0;k<DATA;k++){
                     map[j][i][player][k]=0;
             }
         }
@@ -305,40 +296,124 @@ void initMap(int player){
     system("cls");
 } // Fin initMap
 
-void menuPrincipal(){
-    //Variables
-    int menu = 0;
-    //Execution
-    printf("Voulez vous :\n");
-    printf("1 - Charger une sauvegarde\n2 - Commencer une nouvelle partie\n");
-    scanf("%d",&menu);
-    fflush(stdin);
-    system("cls");
+int getNbSave(){
+    int nb, fini;
+    char path[128]="";
+    FILE* sauvegarde =NULL;
+    fini=0;
+    nb=0;
+    while(fini == 0){
+        sprintf(&path,"%s%d.save",SAVE_PATH,nb+1);
+        sauvegarde = fopen(path,"r");
+        if (sauvegarde == NULL){
+            fini = 1;
+        }else{
+            nb++;
+        }
+        fclose(sauvegarde);
+    }
+    return nb;
+}
 
-    if (menu == 1){ // Charger une sauvegarde
-        indev();
-    }else{ // Nouvelle partie
+void menu(int* toLoad){
+    //Variables
+    int a,b,c,d,i,j;
+    int menu = 0;
+    int nbSave=getNbSave();
+    char path[200];
+    FILE* sauvegarde= NULL;
+    //Execution
+
+    if (nbSave>0){
+        printf("Une sauvegarde a ete trouvee, voulez vous :\n");
+        printf("1 - Charger la derniere sauvegarde\n2 - Charger une autre sauvegarde\n3 - Commencer une nouvelle partie\n");
+        scanf("%d",&menu);
+        fflush(stdin);
+        system("cls");
+        if (menu == 1){ // Charger une sauvegarde
+            *toLoad=nbSave;
+            menu=-1;
+        }else if (menu == 2){
+            printf("Il y %d sauvegardes, laquelle voulez vous charger ?\n",nbSave);
+            do{
+                scanf("%d",toLoad);
+
+                fflush(stdin);
+            }while(*toLoad<=0 || *toLoad>nbSave);
+            menu=-1;
+        }else{
+            menu=0;
+        }
+    }
+
+    if (menu!=-1){
+        // Nouvelle partie
+        printf("Nouvelle Partie\n\n");
+        *toLoad=nbSave+1;
+
         printf("Choisissez un mode de jeu :\n");
         printf("1 - Joueur contre Joueur\n2 - Joueur contre ordinateur\n3 - Ordinateur contre ordinateur\n");
         scanf("%d",&menu);
         fflush(stdin);
-        system("cls");
+        //system("cls");
         GameMode = menu-1;
+
+        sprintf(&path,"%s%d.save",SAVE_PATH,*toLoad);
+        sauvegarde=fopen(path,"w");
+            fprintf(sauvegarde,"%d %d %d",MAP_W,MAP_H,GameMode);
+        fclose(sauvegarde);
+
+
+        initMap(PLAYER1_ID);
+        initMap(PLAYER2_ID);
+        printf("tout les bateaux sont en place\n");
+
+    }else{
+        int w,h;
+        sprintf(&path,"%s%d.save",SAVE_PATH,*toLoad);
+        sauvegarde=fopen(path,"r");
+            fscanf(sauvegarde,"%d %d %d",&w,&h,&GameMode);
+            if (w!=MAP_W || h!=MAP_H){
+                printf("ERREUR : la taille de la sauvegarde ne correspond pas a la configuration du jeu\n");
+                exit(1);
+            }else{
+                printf("Chargement de la sauvegarde n %d ",*toLoad);
+                    sprintf(&path,"%s%d.save",SAVE_PATH,*toLoad);
+                    sauvegarde=fopen(path,"r");
+                printf(".");
+                    fscanf(sauvegarde,"%d %d %d",&a,&b,&c);
+                printf(".");
+
+                    for(i=0;i<MAP_H;i++){ // init map {0}
+                        for(j=0;j<MAP_W;j++){
+                            fscanf(sauvegarde,"%d:%d %d:%d",&a,&b,&c,&d);
+                            map[j][i][PLAYER1_ID][TYPE]=a;
+                            map[j][i][PLAYER1_ID][INFO]=b;
+                            map[j][i][PLAYER2_ID][TYPE]=c;
+                            map[j][i][PLAYER2_ID][INFO]=d;
+                        }
+                    }
+
+                printf(". ");
+                    fclose(sauvegarde);
+                printf("Termine !\n");
+                }
+        fclose(sauvegarde);
     }
 } // Fin menuPrincipal
 
 int testFin(int player){
     int x,y,total;
     total=0;
-    for(y=0;y<MAP_W;y++){
-        for(x=0;x<MAP_H;x++){
+    for(y=0;y<MAP_H;y++){
+        for(x=0;x<MAP_W;x++){
             if(map[x][y][player][TYPE]==1){
                 total++;
             }
         }
     }
     if (total==0){
-        printf("Joueur %d a fini !\n",player+1);
+        printf("Joueur %d a gagne !\n",player+1);
         return 1;
     }else{
         printf("Joueur %d n'a pas fini, il lui reste %d cases \n",player+1,total);
@@ -361,18 +436,35 @@ void tir(int player){
             map[x][y][autreJoueur(player)][TYPE]-=2;
             valide = 1;
         }
+
+
     }
+}
+
+void sauvegarde(int aSauvegarder){
+    char path[128];
+    int i,j;
+
+    sprintf(&path,"%s%d.save",SAVE_PATH,aSauvegarder);
+    FILE* save= NULL;
+        save=fopen(path,"w");
+            fprintf(save,"%d %d %d\n",MAP_W,MAP_H,GameMode);
+            for(i=0;i<MAP_H;i++){ // init map {0}
+                for(j=0;j<MAP_W;j++){
+                    fprintf(save,"%d:%d %d:%d\n",map[j][i][PLAYER1_ID][TYPE],map[j][i][PLAYER1_ID][INFO],map[j][i][PLAYER2_ID][TYPE],map[j][i][PLAYER2_ID][INFO]);
+                }
+            }
+        fclose(save);
 }
 
 int main()
 {
+    int save=0;
     int tourJoueur=PLAYER1_ID;
     // Execution
-    printf("Bataille navale Dv:2\n\n");
-    menuPrincipal();
-    initMap(PLAYER1_ID);
-    initMap(PLAYER2_ID);
-    printf("tout les bateaux sont en place\n");
+    printf("Bataille navale Dv:3\n\n");
+    menu(&save);
+
     while(testFin(PLAYER1_ID)==0&&testFin(PLAYER2_ID)==0){
         if(tourJoueur+GameMode<=1 || printIAtable == 1 || testFin(tourJoueur) == 1){//si joueur ou affichage tableau IA activé ou fini
             br(10);
@@ -380,16 +472,17 @@ int main()
             printTableau(tourJoueur,autreJoueur(tourJoueur));
             printf("\nPosition des navires\n");
             printTableau(tourJoueur,tourJoueur);
+            getchar();
         }
         tir(tourJoueur);
         printf(" joueur %d a tire\n",tourJoueur+1);
         tourJoueur=autreJoueur(tourJoueur);
+        sauvegarde(save);
     }
-    printf("Tableau du Joeur %d :\n",tourJoueur);
-        printTableau(tourJoueur,tourJoueur);
-        tourJoueur=autreJoueur(tourJoueur);
-        printf("Tableau du Joeur %d :\n",tourJoueur);
-        printTableau(tourJoueur,tourJoueur);
-        tourJoueur=autreJoueur(tourJoueur);
+    printf("Tableau du Joueur %d :\n",tourJoueur+1);
+    printTableau(tourJoueur,tourJoueur);
+    tourJoueur=autreJoueur(tourJoueur);
+    printf("Tableau du Joueur %d :\n",tourJoueur+1);
+    printTableau(tourJoueur,tourJoueur);
     return 0;
 }
